@@ -1,5 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
-
+Parameters:
+  TrustedPrincipalArn:
+    Type: String
+    Description: Primcipal that can use ci-role
 Resources:
   PermissionBoundaryPolicy:
     Type: 'AWS::IAM::ManagedPolicy'
@@ -10,12 +13,9 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
+        - Sid: 'devBoundary'
+          Effect: Allow
           Action:
-            - kms:Describe*
-            - kms:List*
-            - kms:Put*
-            - kms:Get*
             - cloudformation:*
             - lambda:*
             - logs:*
@@ -24,7 +24,8 @@ Resources:
           Condition:
             StringEquals:
               aws:RequestedRegion: eu-west-1
-        - Effect: Allow
+        - Sid: 'iamAllowed'
+          Effect: Allow
           Action:
             - iam:List*
             - iam:Get*          
@@ -45,14 +46,16 @@ Resources:
             - iam:DeleteServiceLinkedRole
             - iam:RemoveRoleFromInstanceProfile
           Resource: '*'
-        - Effect: Allow
+        - Sid: 'protectBoundaryPolicy'
+          Effect: Allow
           Action:
             - iam:CreatePolicyVersion
             - iam:DeletePolicy
             - iam:DeletePolicyVersion
             - iam:SetDefaultPolicyVersion
           NotResource: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/ci-permissions-boundary'
-        - Effect: Allow
+        - Sid: 'enforcePermissionsBoundary'
+          Effect: Allow
           Action:
             - iam:CreateRole
             - iam:PutRolePermissionsBoundary
@@ -70,13 +73,12 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Sid: 'NewRolesAndUsers'
+        - Sid: 'deploymentRoleRights'
           Effect: Allow
           Action:
             - iam:*
             - lambda:*
             - cloudformation:*
-            - kms:*
             - logs:*
             - s3:*
             - rds:*
@@ -91,7 +93,7 @@ Resources:
           - 
             Effect: Allow
             Principal: 
-              AWS: !Sub ${AWS::AccountId}
+              AWS: !Ref TrustedPrincipalArn
             Action: 
               - 'sts:AssumeRole'
       Path: '/'
@@ -102,7 +104,7 @@ Resources:
 Outputs:
   CiRoleArn:
     Description: This IAM Role is used for Cloudformation deploy pipelines 
-    Value: !Ref CiRole
+    Value: !GetAtt CiRole.Arn
     Export:
       Name: ci-role-arn
   PermissionsBoundary:
