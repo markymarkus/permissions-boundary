@@ -11,7 +11,7 @@ Full access to:
 Limited access to:
 - IAM. New roles can be created as long as Permissions Boundary is used. Modifications to Permissions Boundary are not allowed.
 
-In short, this blocks pretty efficiently privilege escalation which is result of granting principal an access to control IAM Role and Policy.  
+In short, this blocks pretty efficiently privilege escalation which is result of granting principal an access to control IAM Role and Policies.  
 
 ## Create deployment role
 ```shell
@@ -24,7 +24,7 @@ aws sts get-caller-identity
 "Arn": "arn:aws:sts::11111111111111:assumed-role/deploy-role-CiRole-F85WQA3W91QI/sumething"
 ```
 
-## Create and assume an admin role and do something
+## Test 1: Create and assume an admin role and do something
 If Permissions Boundary is not set, this would be a very easy way to get an elevated access to AWS -> "Create a new role with Admin rights and assume the role". Let's test how it goes now:
 ```shell
 aws iam create-role --role-name testing --assume-role-policy-document file://assumepolicy.json 
@@ -43,11 +43,11 @@ aws lambda list-functions
 ```
 
 
-## Switch back to the original deployment role and try to modify permissions boundary
-Another common way to get elevated access rights is to modify access policy and just edit in wanted rights.
+## Test 2: Modify permissions boundary
+Another common way to get elevated access rights is to modify access policy(in this case Permissions Policy) and just edit in wanted rights.
 ```shell
 source assumerole.sh arn:aws:iam::11111111111111:role/deploy-role-CiRole-F85WQA3W91QI
-
+# Switched back to the original deployment role
 aws iam create-policy-version --policy-arn arn:aws:iam::11111111111111:policy/ci-permissions-boundary --policy-document file://allow_all_policy.json
 # AccessDenied "ci-permissions-boundary" can't be modified
 aws iam put-role-permissions-boundary --role-name deploy-role-CiRole-F85WQA3W91QI --permissions-boundary file://allow_all_policy.json
